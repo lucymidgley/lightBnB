@@ -1,15 +1,4 @@
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  user: 'vagrant',
-  password: '123',
-  host: 'localhost',
-  database: 'lightbnb'
-})
-
-const properties = require('./json/properties.json');
-//const users = require('./json/users.json');
-
+const db = require('./db/index')
 /// Users
 
 /**
@@ -18,7 +7,7 @@ const properties = require('./json/properties.json');
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
-  return pool.query(`
+ return db.query(`
 SELECT *
 FROM users
 WHERE email = $1;
@@ -33,7 +22,7 @@ exports.getUserWithEmail = getUserWithEmail;
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithId = function(id) {
-  return pool.query(`
+ return db.query(`
   SELECT *
   FROM users
   WHERE id = $1;
@@ -50,7 +39,7 @@ exports.getUserWithId = getUserWithId;
  */
 const addUser =  function(user) {
   const userValues = [user['name'], user['email'], user['password']];
-  return pool.query(`
+ return db.query(`
   INSERT INTO users (
     name, email, password) 
     VALUES (
@@ -68,7 +57,7 @@ exports.addUser = addUser;
  */
 const getAllReservations = function(guest_id, limit = 10) {
   const userValues = [guest_id, limit]
-return pool.query(`
+return db.query(`
 SELECT properties.*, reservations.*, avg(rating) as average_rating
 FROM reservations
 JOIN properties ON reservations.property_id = properties.id
@@ -96,7 +85,7 @@ const getAllProperties = function(options, limit = 10) {
   let queryString = `
   SELECT properties.*, AVG(property_reviews.rating) as average_rating
   FROM properties 
-  LEFT JOIN property_reviews ON properties.id = property_reviews.property_id
+  JOIN property_reviews ON properties.id = property_reviews.property_id
   `;
   if(options.city) {
     queryParams.push(`%${options.city}%`)
@@ -117,15 +106,14 @@ const getAllProperties = function(options, limit = 10) {
     queryString += `GROUP BY properties.id
     HAVING AVG(property_reviews.rating) >= $${queryParams.length} `;
   } else {
-    queryParams.push(5)
+    queryParams.push(limit)
     queryString += `GROUP BY properties.id
     ORDER BY cost_per_night
     LIMIT $${queryParams.length} ;
     `;
   }
   
-  console.log(queryString, queryParams, options);
-return pool.query(queryString, queryParams)
+  return db.query(queryString, queryParams)
 .then(res => res.rows);
 }
 
@@ -144,8 +132,7 @@ exports.getAllProperties = getAllProperties;
  */
 const addProperty = function(property) {
   const propertyValues = [property['owner_id'], property['title'], property['description'], property['thumbnail_photo_url'], property['cover_photo_url'], property['cost_per_night'], property['street'], property['city'], property['province'], property['post_code'], property['country'], property['parking_spaces'], property['number_of_bathrooms'], property['number_of_bedrooms']];
-  console.log(propertyValues);
-  return pool.query(`
+ return db.query(`
   INSERT INTO properties (
     owner_id, title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, street, city, province, post_code, country, parking_spaces, number_of_bathrooms, number_of_bedrooms, active) 
     VALUES (
